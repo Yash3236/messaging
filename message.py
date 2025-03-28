@@ -1,6 +1,8 @@
 import streamlit as st
 import random
 import time
+import sqlite3
+import os #For setting file path
 
 # Room Capacity
 MAX_USERS = 50
@@ -8,17 +10,50 @@ MAX_USERS = 50
 # List of System Emojis (Extend as desired)
 EMOJIS = ["😀", "😂", "😎", "😍", "🤔", "👍", "❤️", "🎉", "🎈", "🎁", "🌟", "🔥", "💯", "✨", "✅", "😊", "👏", "🙌", "🥳"]
 
+# Database setup
+DATABASE_FILE = os.path.join(".", "chat_database.db")  # Database File
+#os.path.join - this creates the database file in the same working directory where the script runs from. This is better than a static path because different users can have different paths.
+
 def get_random_emoji():
     """Returns a random emoji from the list."""
     return random.choice(EMOJIS)
 
+
+def create_table(room_id):
+    """Creates a table for the chat history of a specific room."""
+    conn = sqlite3.connect(DATABASE_FILE)
+    c = conn.cursor()
+    c.execute(f'''CREATE TABLE IF NOT EXISTS room_{room_id}
+                 (timestamp REAL, message TEXT)''')  # Fixed table name
+    conn.commit()
+    conn.close()
+
+
+def save_message(room_id, message):
+    """Saves a message to the chat history table."""
+    conn = sqlite3.connect(DATABASE_FILE)
+    c = conn.cursor()
+    c.execute(f"INSERT INTO room_{room_id} (timestamp, message) VALUES (?, ?)",
+              (time.time(), message))
+    conn.commit()
+    conn.close()
+
+
+def load_chat_history(room_id):
+    """Loads chat history from the database."""
+    conn = sqlite3.connect(DATABASE_FILE)
+    c = conn.cursor()
+    c.execute(f"SELECT message FROM room_{room_id} ORDER BY timestamp ASC")
+    messages = [row[0] for row in c.fetchall()]
+    conn.close()
+    return messages
+
+
 def display_chat(room_id):
     """Displays the chat interface."""
-    if 'chat_history' not in st.session_state:
-        st.session_state['chat_history'] = []
-
-    # Display chat messages
-    for message in st.session_state['chat_history']:
+    # Load chat history from the database
+    chat_history = load_chat_history(room_id)
+    for message in chat_history:
         st.markdown(message, unsafe_allow_html=True)  # Allow HTML for emoji inclusion
 
     # Input area
@@ -31,7 +66,7 @@ def display_chat(room_id):
             with cols[i % 6]:  # Distribute emojis across columns
                 emoji = EMOJIS[i]
                 if st.button(emoji, key=f"emoji_{i}"):
-                    new_message = emoji #Select emoji, and assign it to be new message.
+                    new_message = emoji  # Select emoji, and assign it to be new message.
     return new_message
 
 
@@ -52,10 +87,12 @@ def main():
         if create_room:
             st.session_state['room_id'] = str(time.time())  # Generate unique room ID
             st.success(f"Room created! Share this URL with others. Room ID: {st.session_state['room_id']}")
+            create_table(st.session_state['room_id']) #Create table for room.
             st.experimental_rerun()  # Re-run once the room id has been created.
 
         if join_room:
             st.session_state['room_id'] = join_room  # Set room ID from user input
+            create_table(st.session_state['room_id'])
             st.experimental_rerun()
 
         return  # Stop execution until room ID is set
@@ -84,17 +121,17 @@ def main():
 
     # Main display chat
     st.title(f"Chatroom: {st.session_state['room_id']}")
-    message = display_chat(st.session_state['room_id']) #message from text input.
+    message = display_chat(st.session_state['room_id'])  # message from text input.
 
     # Send Button
     if st.button("Send Message"):
         if message.strip():
             formatted_message = f"**{st.session_state['username']}:** {message}"  # Message format
-            st.session_state['chat_history'].append(formatted_message)  # Append to message
-            st.experimental_rerun()#clear textbox
+            # Save the message to the database
+            save_message(st.session_state['room_id'], formatted_message)
+            st.session_state["rerun_flag"] = not st.session_state.get("rerun_flag",False) #re-run
 
-    st.experimental_rerun()  # Simulate real-time updates
-
+    st.session_state["rerun_flag"] = not st.session_state.get("rerun_flag", False) #Constant Re-run to ensure latest messages.
 
 if __name__ == "__main__":
     main()
