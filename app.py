@@ -3,7 +3,8 @@ import random
 import time
 import sqlite3
 import os  # For setting file path
-import re #added regex
+import re  # added regex
+from urllib.parse import quote, unquote  # For URL encoding
 
 # Room Capacity
 MAX_USERS = 50
@@ -30,7 +31,7 @@ def create_table(room_id):
         c.execute(f'''CREATE TABLE IF NOT EXISTS room_{safe_room_id}
                      (timestamp REAL, message TEXT)''')  # Use safe table name
         conn.commit()
-    except sqlite3.Error as e: #Added except in case table is not created.
+    except sqlite3.Error as e:  # Added except in case table is not created.
         print(f"Database error: {e}")
     finally:
         conn.close()
@@ -96,6 +97,15 @@ def main():
         st.session_state['room_id'] = None  # Initialize room_id
         st.session_state['username'] = None  # Initialize username
 
+    # Get room_id from URL parameters
+    query_params = st.experimental_get_query_params()
+    url_room_id = query_params.get("room_id", [None])[0]  # Get room_id from URL
+
+    if url_room_id and not st.session_state['room_id']: #Has the room id been set before? If not, set it from the url and rerun.
+        st.session_state['room_id'] = url_room_id
+        create_table(st.session_state['room_id'])
+        st.experimental_rerun()
+
     if not st.session_state['room_id']:
         st.header("Create or Join a Chatroom")
 
@@ -106,13 +116,16 @@ def main():
             roomid = str(time.time())
             safe_room_id = re.sub(r'[^a-zA-Z0-9_]', '', roomid)  # Remove invalid characters.
             st.session_state['room_id'] = safe_room_id  # Generate unique room ID
-            st.success(f"Room created! Share this URL with others. Room ID: {st.session_state['room_id']}")
+            st.success(f"Room created! Share this URL with others:"
+                       f" ?room_id={st.session_state['room_id']}") #The URL
+
             create_table(st.session_state['room_id'])  # Create table for room.
+
             #st.experimental_rerun()  # Re-run once the room id has been created.
-            st.session_state["rerun_flag_create_room"] = not st.session_state.get("rerun_flag_create_room", False)
+            st.session_state["rerun_flag_create_room"] = not st.session_state.get("rerun_flag_create_room", False) #re-run
 
         if join_room:
-            safe_join_room = re.sub(r'[^a-zA-Z0-9_]', '',join_room)
+            safe_join_room = re.sub(r'[^a-zA-Z0-9_]', '', join_room)
             st.session_state['room_id'] = safe_join_room  # Set room ID from user input
             create_table(st.session_state['room_id'])
             #st.experimental_rerun()
@@ -130,6 +143,9 @@ def main():
         else:
             st.warning("Please enter a username.")
             return
+
+    # Display Username
+    st.write(f"You are chatting as: **{st.session_state['username']}**") #Show Username.
 
     # Check User Limit
     if len(st.session_state.get('users', [])) >= MAX_USERS:  # Create a list of users.
