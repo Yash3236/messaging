@@ -1,5 +1,2 @@
 streamlit
-pandas
-Pillow
-pycontacts; platform_system == "Darwin"
-pywin32; platform_system == "Windows"
+regex
