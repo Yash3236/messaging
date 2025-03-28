@@ -3,6 +3,72 @@ import pandas as pd
 import io
 from PIL import Image
 import base64
+import platform
+import os
+
+# Platform-specific contact access libraries
+try:
+    if platform.system() == 'Darwin':  # macOS
+        import contacts
+    elif platform.system() == 'Windows':
+        import win32com.client
+    elif platform.system() == 'Linux':
+        import addressbook  # You might need to install a specific library
+except ImportError:
+    st.warning("Some contact access libraries are not available.")
+
+
+def get_device_contacts():
+    """
+    Retrieve contacts from the device based on the operating system.
+    
+    Returns:
+        list: A list of dictionaries containing contact information
+    """
+    contacts_list = []
+    
+    try:
+        if platform.system() == 'Darwin':  # macOS
+            # Using pycontacts library for macOS
+            contact_store = contacts.Contacts()
+            for contact in contact_store.contacts:
+                name = contact.full_name
+                phone = contact.phones[0].value if contact.phones else ''
+                contacts_list.append({
+                    'name': name,
+                    'phone_number': phone
+                })
+        
+        elif platform.system() == 'Windows':
+            # Using win32com for Windows contacts
+            outlook = win32com.client.Dispatch("Outlook.Application").GetNamespace("MAPI")
+            address_book = outlook.AddressLists.Item(1)
+            
+            for contact in address_book.AddressEntries:
+                try:
+                    contact_item = contact.GetExchangeUser()
+                    if contact_item:
+                        name = contact_item.Name
+                        phone = contact_item.PrimarySmtpAddress
+                        contacts_list.append({
+                            'name': name,
+                            'phone_number': phone
+                        })
+                except Exception:
+                    pass
+        
+        elif platform.system() == 'Linux':
+            # This is a placeholder - Linux contact access varies widely
+            # You might need to use a specific library like evolution-data-server
+            st.warning("Linux contact access not fully implemented.")
+        
+        else:
+            st.warning(f"Contact access not supported on {platform.system()}")
+    
+    except Exception as e:
+        st.error(f"Error accessing device contacts: {e}")
+    
+    return contacts_list
 
 
 def img_to_bytes(img_path):
@@ -69,9 +135,39 @@ def main():
     if 'messages' not in st.session_state:
         st.session_state['messages'] = {}
 
-    # Sidebar for Contact Management
+    # Device Contacts Access Section
+    st.header("Device Contacts")
+    
+    # Button to import device contacts
+    if st.button("Import Device Contacts"):
+        device_contacts = get_device_contacts()
+        
+        if device_contacts:
+            # Track new contacts
+            new_contacts = []
+            
+            for contact in device_contacts:
+                # Check for duplicates
+                existing_contact = next(
+                    (c for c in st.session_state['contacts'] 
+                     if c['name'] == contact['name'] or c['phone_number'] == contact['phone_number']), 
+                    None
+                )
+                
+                if not existing_contact:
+                    new_contacts.append(contact)
+                    st.session_state['messages'][contact['name']] = []
+            
+            # Add new contacts
+            st.session_state['contacts'].extend(new_contacts)
+            
+            st.success(f"Imported {len(new_contacts)} new contacts from device.")
+        else:
+            st.warning("No contacts found or access denied.")
+
+    # Sidebar for Manual Contact Management
     with st.sidebar:
-        st.header("Contact Management")
+        st.header("Manual Contact Management")
 
         # Manual Contact Entry
         st.subheader("Add Contact Manually")
@@ -161,7 +257,7 @@ def main():
     st.header("Contacts and Messages")
 
     if not st.session_state['contacts']:
-        st.info("No contacts added yet. Please add contacts using the sidebar.")
+        st.info("No contacts added yet. Please add contacts using the sidebar or import from device.")
     else:
         # Display contacts and messaging interface
         for contact in st.session_state['contacts']:
