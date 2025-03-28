@@ -3,6 +3,7 @@ import random
 import time
 import sqlite3
 import os  # For setting file path
+import re #added regex
 
 # Room Capacity
 MAX_USERS = 50
@@ -22,35 +23,46 @@ def get_random_emoji():
 
 def create_table(room_id):
     """Creates a table for the chat history of a specific room."""
+    safe_room_id = re.sub(r'[^a-zA-Z0-9_]', '', room_id)  # Remove invalid characters.
     conn = sqlite3.connect(DATABASE_FILE)
     c = conn.cursor()
-    c.execute(f'''CREATE TABLE IF NOT EXISTS room_{room_id}
-                 (timestamp REAL, message TEXT)''')  # Fixed table name
-    conn.commit()
-    conn.close()
+    try:
+        c.execute(f'''CREATE TABLE IF NOT EXISTS room_{safe_room_id}
+                     (timestamp REAL, message TEXT)''')  # Use safe table name
+        conn.commit()
+    except sqlite3.Error as e: #Added except in case table is not created.
+        print(f"Database error: {e}")
+    finally:
+        conn.close()
 
 
 def save_message(room_id, message):
     """Saves a message to the chat history table."""
+    safe_room_id = re.sub(r'[^a-zA-Z0-9_]', '', room_id)  # Remove invalid characters.
     conn = sqlite3.connect(DATABASE_FILE)
     c = conn.cursor()
-    c.execute(f"INSERT INTO room_{room_id} (timestamp, message) VALUES (?, ?)",
-              (time.time(), message))
-    conn.commit()
-    conn.close()
+    try:
+        c.execute(f"INSERT INTO room_{safe_room_id} (timestamp, message) VALUES (?, ?)",
+                  (time.time(), message))
+        conn.commit()
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+    finally:
+        conn.close()
 
 
 def load_chat_history(room_id):
     """Loads chat history from the database."""
+    safe_room_id = re.sub(r'[^a-zA-Z0-9_]', '', room_id)  # Remove invalid characters.
     conn = sqlite3.connect(DATABASE_FILE)
     c = conn.cursor()
-    try: #Added try block.
-        c.execute(f"SELECT message FROM room_{room_id} ORDER BY timestamp ASC")
+    try:
+        c.execute(f"SELECT message FROM room_{safe_room_id} ORDER BY timestamp ASC")
         messages = [row[0] for row in c.fetchall()]
-    except sqlite3.OperationalError: #If table does not exists.
-        messages = []#return empty array.
+    except sqlite3.OperationalError:  # If table does not exists.
+        messages = []  # return empty array.
     finally:
-        conn.close() #Ensure conn close.
+        conn.close()
     return messages
 
 
@@ -91,13 +103,16 @@ def main():
         join_room = st.text_input("Join Existing Room (Enter Room ID):")
 
         if create_room:
-            st.session_state['room_id'] = str(time.time())  # Generate unique room ID
+            roomid = str(time.time())
+            safe_room_id = re.sub(r'[^a-zA-Z0-9_]', '', roomid)  # Remove invalid characters.
+            st.session_state['room_id'] = safe_room_id  # Generate unique room ID
             st.success(f"Room created! Share this URL with others. Room ID: {st.session_state['room_id']}")
             create_table(st.session_state['room_id'])  # Create table for room.
             st.experimental_rerun()  # Re-run once the room id has been created.
 
         if join_room:
-            st.session_state['room_id'] = join_room  # Set room ID from user input
+            safe_join_room = re.sub(r'[^a-zA-Z0-9_]', '',join_room)
+            st.session_state['room_id'] = safe_join_room  # Set room ID from user input
             create_table(st.session_state['room_id'])
             st.experimental_rerun()
 
