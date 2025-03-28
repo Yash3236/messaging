@@ -14,9 +14,10 @@ try:
         import win32com.client  # Needs pywin32: pip install pywin32
     elif platform.system() == 'Linux':
         # Placeholder; requires more specific library and setup
-        pass # or st.warning("Linux contact access needs configuration.")
+        pass  # or st.warning("Linux contact access needs configuration.")
 except ImportError as e:
     st.warning(f"Contact access libraries are not fully available: {e}")
+
 
 # Function to get device contacts (platform-specific)
 def get_device_contacts():
@@ -39,7 +40,7 @@ def get_device_contacts():
                     address_book = outlook.AddressLists[i]  # Iterate through address books
                     for contact in address_book.AddressEntries:
                         try:
-                            if contact.Class == 43: #OlContact
+                            if contact.Class == 43:  # OlContact
                                 user = contact.GetContact()
                                 name = contact.FullName
                                 phone = user.BusinessTelephoneNumber if user.BusinessTelephoneNumber else ""
@@ -88,7 +89,7 @@ def img_to_html(img_path, width=20, height=20):
 
 # Main Streamlit application
 def main():
-    try: # Added a try/except block for the entire main function
+    try:  # Added a try/except block for the entire main function
         st.set_page_config(
             page_title="Contact Messaging App",
             page_icon=":speech_balloon:",
@@ -215,11 +216,12 @@ def main():
                                 new_contacts.append({"name": name, "phone_number": phone})
                                 st.session_state["messages"][name] = []
 
-                        st.session_state["contacts"].extend(new_contacts)
-                        st.success(f"Uploaded {len(new_contacts)} contacts.")
+                    # Extend contacts and display success message *within* the try block
+                    st.session_state["contacts"].extend(new_contacts)
+                    st.success(f"Uploaded {len(new_contacts)} contacts.")
 
-            except Exception as e:
-                st.error(f"CSV processing error: {e}")
+                except Exception as e:
+                    st.error(f"CSV processing error: {e}")
 
         # Contact & Messaging Area
         st.header("Contacts and Messaging")
@@ -264,6 +266,6 @@ def main():
         st.error(f"An unexpected error occurred: {e}")
 
 
-#Run the app
+# Run the app
 if __name__ == "__main__":
     main()
