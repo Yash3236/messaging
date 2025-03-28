@@ -14,7 +14,6 @@ EMOJIS = ["😀", "😂", "😎", "😍", "🤔", "👍", "❤️", "🎉", "�
 
 # Database setup
 DATABASE_FILE = os.path.join(".", "chat_database.db")  # Database File
-# os.path.join - this creates the database file in the same working directory where the script runs from. This is better than a static path because different users can have different paths.
 
 
 def get_random_emoji():
@@ -92,6 +91,9 @@ def display_chat(room_id):
 def main():
     st.set_page_config(page_title="Anonymous Chatroom", layout="wide")
 
+    # Determine if user is the host
+    is_host = st.secrets.get("IS_HOST", False)  # Check environment variable
+
     # Room Creation/Joining
     if 'room_id' not in st.session_state:
         st.session_state['room_id'] = None  # Initialize room_id
@@ -101,35 +103,38 @@ def main():
     query_params = st.experimental_get_query_params()
     url_room_id = query_params.get("room_id", [None])[0]  # Get room_id from URL
 
-    if url_room_id and not st.session_state['room_id']: #Has the room id been set before? If not, set it from the url and rerun.
+    if url_room_id and not st.session_state['room_id']:  # Has the room id been set before?
         st.session_state['room_id'] = url_room_id
         create_table(st.session_state['room_id'])
+        st.session_state["rerun_flag"] = not st.session_state.get("rerun_flag", False) #Rerun
         st.experimental_rerun()
 
     if not st.session_state['room_id']:
+
         st.header("Create or Join a Chatroom")
+        if is_host:
+            st.subheader("Host Controls")
+            room_id_input = st.text_input("Enter 6-digit Chatroom ID:", max_chars=6, type="password")
+            create_room = st.button("Create Room")
 
-        create_room = st.button("Create New Room")
-        join_room = st.text_input("Join Existing Room (Enter Room ID):")
+            if create_room:
+                if room_id_input.isdigit() and len(room_id_input) == 6:
+                    safe_room_id = re.sub(r'[^a-zA-Z0-9_]', '', room_id_input)  # Sanitize the room ID
+                    st.session_state['room_id'] = safe_room_id  # Generate unique room ID
+                    st.success(f"Room created! Share this app URL with `?room_id={st.session_state['room_id']}` with others.")
+                    create_table(st.session_state['room_id'])  # Create table for room.
+                    st.session_state["rerun_flag"] = not st.session_state.get("rerun_flag", False) #Re-run
+                else:
+                    st.error("Room ID must be a 6-digit number.")
 
-        if create_room:
-            roomid = str(time.time())
-            safe_room_id = re.sub(r'[^a-zA-Z0-9_]', '', roomid)  # Remove invalid characters.
-            st.session_state['room_id'] = safe_room_id  # Generate unique room ID
-            st.success(f"Room created! Share this URL with others:"
-                       f" ?room_id={st.session_state['room_id']}") #The URL
-
-            create_table(st.session_state['room_id'])  # Create table for room.
-
-            #st.experimental_rerun()  # Re-run once the room id has been created.
-            st.session_state["rerun_flag_create_room"] = not st.session_state.get("rerun_flag_create_room", False) #re-run
-
-        if join_room:
-            safe_join_room = re.sub(r'[^a-zA-Z0-9_]', '', join_room)
-            st.session_state['room_id'] = safe_join_room  # Set room ID from user input
-            create_table(st.session_state['room_id'])
-            #st.experimental_rerun()
-            st.session_state["rerun_flag_join_room"] = not st.session_state.get("rerun_flag_join_room", False)
+        else:  # Regular user
+            st.subheader("Join a Chatroom")
+            join_room = st.text_input("Enter Chatroom ID:")
+            if join_room:
+                safe_join_room = re.sub(r'[^a-zA-Z0-9_]', '', join_room)
+                st.session_state['room_id'] = safe_join_room
+                create_table(st.session_state['room_id'])
+                st.session_state["rerun_flag"] = not st.session_state.get("rerun_flag", False) #Re-run
 
         return  # Stop execution until room ID is set
 
@@ -138,14 +143,13 @@ def main():
         username = st.text_input("Enter your username:")
         if username:
             st.session_state['username'] = username  # Set Username
-            #st.experimental_rerun()
-            st.session_state["rerun_flag_username"] = not st.session_state.get("rerun_flag_username", False)
+            st.session_state["rerun_flag"] = not st.session_state.get("rerun_flag", False) #Rerun
         else:
             st.warning("Please enter a username.")
             return
 
     # Display Username
-    st.write(f"You are chatting as: **{st.session_state['username']}**") #Show Username.
+    st.write(f"You are chatting as: **{st.session_state['username']}**")  # Show Username.
 
     # Check User Limit
     if len(st.session_state.get('users', [])) >= MAX_USERS:  # Create a list of users.
@@ -169,12 +173,9 @@ def main():
             formatted_message = f"**{st.session_state['username']}:** {message}"  # Message format
             # Save the message to the database
             save_message(st.session_state['room_id'], formatted_message)
-            #st.experimental_rerun()  # re-run
-            st.session_state["rerun_flag_message"] = not st.session_state.get("rerun_flag_message", False)
+            st.session_state["rerun_flag"] = not st.session_state.get("rerun_flag", False) #Re-run
 
-    #st.experimental_rerun()
-    st.session_state["rerun_flag_display"] = not st.session_state.get("rerun_flag_display", False)
-
+    st.session_state["rerun_flag"] = not st.session_state.get("rerun_flag", False) #rerun
 
 if __name__ == "__main__":
     main()
