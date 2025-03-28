@@ -100,17 +100,15 @@ def main():
         st.session_state['username'] = None  # Initialize username
 
     # Get room_id from URL parameters
-    query_params = st.experimental_get_query_params()
-    url_room_id = query_params.get("room_id", [None])[0]  # Get room_id from URL
+    query_params = st.query_params #The New API.
+    url_room_id = query_params.get("room_id", None)  # Get room_id from URL
 
     if url_room_id and not st.session_state['room_id']:  # Has the room id been set before?
         st.session_state['room_id'] = url_room_id
         create_table(st.session_state['room_id'])
-        st.session_state["rerun_flag"] = not st.session_state.get("rerun_flag", False) #Rerun
-        st.experimental_rerun()
+        st.session_state["rerun_flag"] = not st.session_state.get("rerun_flag", False)  # Rerun
 
     if not st.session_state['room_id']:
-
         st.header("Create or Join a Chatroom")
         if is_host:
             st.subheader("Host Controls")
@@ -123,7 +121,7 @@ def main():
                     st.session_state['room_id'] = safe_room_id  # Generate unique room ID
                     st.success(f"Room created! Share this app URL with `?room_id={st.session_state['room_id']}` with others.")
                     create_table(st.session_state['room_id'])  # Create table for room.
-                    st.session_state["rerun_flag"] = not st.session_state.get("rerun_flag", False) #Re-run
+                    st.session_state["rerun_flag"] = not st.session_state.get("rerun_flag", False) #Rerun
                 else:
                     st.error("Room ID must be a 6-digit number.")
 
@@ -134,7 +132,7 @@ def main():
                 safe_join_room = re.sub(r'[^a-zA-Z0-9_]', '', join_room)
                 st.session_state['room_id'] = safe_join_room
                 create_table(st.session_state['room_id'])
-                st.session_state["rerun_flag"] = not st.session_state.get("rerun_flag", False) #Re-run
+                st.session_state["rerun_flag"] = not st.session_state.get("rerun_flag", False)  # Rerun
 
         return  # Stop execution until room ID is set
 
@@ -143,7 +141,7 @@ def main():
         username = st.text_input("Enter your username:")
         if username:
             st.session_state['username'] = username  # Set Username
-            st.session_state["rerun_flag"] = not st.session_state.get("rerun_flag", False) #Rerun
+            st.session_state["rerun_flag"] = not st.session_state.get("rerun_flag", False)  # Rerun
         else:
             st.warning("Please enter a username.")
             return
@@ -173,9 +171,9 @@ def main():
             formatted_message = f"**{st.session_state['username']}:** {message}"  # Message format
             # Save the message to the database
             save_message(st.session_state['room_id'], formatted_message)
-            st.session_state["rerun_flag"] = not st.session_state.get("rerun_flag", False) #Re-run
+            st.session_state["rerun_flag"] = not st.session_state.get("rerun_flag", False)  # Rerun
 
-    st.session_state["rerun_flag"] = not st.session_state.get("rerun_flag", False) #rerun
+    st.session_state["rerun_flag"] = not st.session_state.get("rerun_flag", False)  # rerun
 
 if __name__ == "__main__":
     main()
