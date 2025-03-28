@@ -14,7 +14,7 @@ def img_to_bytes(img_path):
         img.save(img_buffer, format='PNG')  # Or another suitable format
         return img_buffer.getvalue()
     except FileNotFoundError:
-        st.error(f"Image file not found: {img_path}")
+        st.error(f"FileNotFoundError: Image file not found: {img_path}")
         return None  # Return None if the image is not found
     except Exception as e:
         st.error(f"Error processing image {img_path}: {e}")
@@ -37,12 +37,22 @@ def main():
         layout="wide",
     )
 
+    # Debugging: Print current working directory and file list
+    current_dir = os.getcwd()
+    st.write(f"Current working directory: `{current_dir}`")
+    files_in_dir = os.listdir(current_dir)
+    st.write(f"Files in current directory: `{files_in_dir}`")
+
     # Ensure image files exist before proceeding
     image_files = ['chat.png', 'add_user.png', 'send.png']
+    images_found = True  # Assume all images are found initially
     for img_file in image_files:
         if not os.path.exists(img_file):
-            st.error(f"Error: Image file '{img_file}' not found.  Place it in the same directory as the script.")
-            st.stop()  # Stop the app if images are missing
+            st.error(f"Error: Image file '{img_file}' not found. Place it in the same directory as the script.")
+            images_found = False  # Mark that an image is missing
+
+    if not images_found:
+        st.stop()  # Stop the app if any images are missing
 
     title_html = img_to_html('chat.png')
     if title_html:
