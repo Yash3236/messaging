@@ -102,15 +102,14 @@ def main():
     # Get room_id from URL parameters
     query_params = st.query_params  # The New API.
     url_room_id = query_params.get("room_id")  # Get room_id from URL
-    #st.write(f"URL Room ID: {url_room_id}")  # Debug line - Remove after testing
 
     # Set the room id from the URL, but *only* if it is not already set
     if url_room_id and st.session_state['room_id'] is None:  # Added check for existing room_id
         st.session_state['room_id'] = url_room_id
         create_table(st.session_state['room_id'])
-        #st.write("Setting room_id from URL")  # Debug line - Remove after testing
+        #st.experimental_rerun()  # Remove this line
         st.session_state["rerun_flag_url"] = not st.session_state.get("rerun_flag_url", False) #Added re-run
-        st.experimental_rerun()  # Force a re-run.
+        st.experimental_rerun()  # Force a re-run. Commenting out and leaving it here as a note.
 
     #Check if room_id is set or not,
     if not st.session_state['room_id']:
@@ -126,8 +125,9 @@ def main():
                     st.session_state['room_id'] = safe_room_id  # Generate unique room ID
                     st.success(f"Room created! Share this app URL with `?room_id={st.session_state['room_id']}` with others.")
                     create_table(st.session_state['room_id'])  # Create table for room.
-                    st.session_state["rerun_flag_create"] = not st.session_state.get("rerun_flag_create", False) #Rerun
+                    st.session_state["rerun_flag_create"] = not st.session_state.get("rerun_flag_create", False)  # Rerun
                     st.experimental_rerun()
+
                 else:
                     st.error("Room ID must be a 6-digit number.")
 
@@ -138,7 +138,7 @@ def main():
                 safe_join_room = re.sub(r'[^a-zA-Z0-9_]', '', join_room)
                 st.session_state['room_id'] = safe_join_room
                 create_table(st.session_state['room_id'])
-                st.session_state["rerun_flag_join"] = not st.session_state.get("rerun_flag_join", False) #Rerun
+                st.session_state["rerun_flag_join"] = not st.session_state.get("rerun_flag_join", False)  # Rerun
                 st.experimental_rerun()
 
         return  # Stop execution until room ID is set
@@ -187,4 +187,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
