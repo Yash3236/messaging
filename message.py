@@ -1,91 +1,3 @@
-import streamlit as st
-import pandas as pd
-import io
-from PIL import Image
-import base64
-import platform
-import os
-
-# Platform-specific contact access libraries
-try:
-    if platform.system() == 'Darwin':  # macOS
-        import contacts  # pip install pycontacts
-    elif platform.system() == 'Windows':
-        import win32com.client  # Needs pywin32: pip install pywin32
-    elif platform.system() == 'Linux':
-        # Placeholder; requires more specific library and setup
-        pass # or st.warning("Linux contact access needs configuration.")
-except ImportError as e:
-    st.warning(f"Contact access libraries are not fully available: {e}")
-
-# Function to get device contacts (platform-specific)
-def get_device_contacts():
-    contacts_list = []
-    try:
-        if platform.system() == 'Darwin':  # macOS
-            try:
-                contact_store = contacts.Contacts()
-                for contact in contact_store.contacts:
-                    name = contact.full_name
-                    phone = contact.phones[0].value if contact.phones else ''
-                    contacts_list.append({'name': name, 'phone_number': phone})
-            except Exception as e:
-                st.error(f"Error accessing contacts on macOS: {e}")
-
-        elif platform.system() == 'Windows':
-            try:
-                outlook = win32com.client.Dispatch("Outlook.Application").GetNamespace("MAPI")
-                for i in range(1, outlook.AddressLists.Count + 1):
-                    address_book = outlook.AddressLists[i]  # Iterate through address books
-                    for contact in address_book.AddressEntries:
-                        try:
-                            if contact.Class == 43: #OlContact
-                                user = contact.GetContact()
-                                name = contact.FullName
-                                phone = user.BusinessTelephoneNumber if user.BusinessTelephoneNumber else ""
-                                contacts_list.append({'name': name, 'phone_number': phone})
-
-                        except Exception as e:
-                            st.warning(f"Error processing a contact: {e}")
-            except Exception as e:
-                st.error(f"Error accessing Outlook on Windows: {e}")
-
-        elif platform.system() == 'Linux':
-            st.warning("Linux contact access requires specific configuration and libraries.")
-
-        else:
-            st.warning(f"Contact access not supported on {platform.system()}")
-
-    except Exception as e:
-        st.error(f"General error accessing contacts: {e}")
-
-    return contacts_list
-
-
-# Function to convert an image to bytes with error handling
-def img_to_bytes(img_path):
-    try:
-        with Image.open(img_path) as img:
-            img_buffer = io.BytesIO()
-            img.save(img_buffer, format="PNG")
-            return img_buffer.getvalue()
-    except FileNotFoundError:
-        st.error(f"Image not found: {img_path}")
-        return None
-    except Exception as e:
-        st.error(f"Error processing image {img_path}: {e}")
-        return None
-
-
-# Function to convert an image to HTML with base64 encoding
-def img_to_html(img_path, width=20, height=20):
-    img_bytes = img_to_bytes(img_path)
-    if img_bytes:
-        base64_str = base64.b64encode(img_bytes).decode()
-        return f'<img src="data:image/png;base64,{base64_str}" width="{width}" height="{height}">'
-    return ""
-
-
 # Main Streamlit application
 def main():
     st.set_page_config(
@@ -198,7 +110,7 @@ def main():
                             )
                             continue
 
-                        name = str(name) #cast to string, handles numbers
+                        name = str(name)  # cast to string, handles numbers
                         phone = str(phone)
                         # Robust duplicate checking
                         existing = next(
@@ -253,8 +165,11 @@ def main():
                 if name not in st.session_state["messages"]:
                     st.session_state["messages"][name] = []
                 st.session_state["messages"][name].append(f"You: {message}")
-                st.experimental_rerun()
 
+                # Trigger a re-run by changing a session state variable:
+                st.session_state["rerun_flag"] = not st.session_state.get(
+                    "rerun_flag", False
+                )
 #Run the app
 if __name__ == "__main__":
     main()
