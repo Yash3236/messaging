@@ -2,7 +2,7 @@ import streamlit as st
 import random
 import time
 import sqlite3
-import os #For setting file path
+import os  # For setting file path
 
 # Room Capacity
 MAX_USERS = 50
@@ -12,7 +12,8 @@ EMOJIS = ["😀", "😂", "😎", "😍", "🤔", "👍", "❤️", "🎉", "�
 
 # Database setup
 DATABASE_FILE = os.path.join(".", "chat_database.db")  # Database File
-#os.path.join - this creates the database file in the same working directory where the script runs from. This is better than a static path because different users can have different paths.
+# os.path.join - this creates the database file in the same working directory where the script runs from. This is better than a static path because different users can have different paths.
+
 
 def get_random_emoji():
     """Returns a random emoji from the list."""
@@ -43,14 +44,19 @@ def load_chat_history(room_id):
     """Loads chat history from the database."""
     conn = sqlite3.connect(DATABASE_FILE)
     c = conn.cursor()
-    c.execute(f"SELECT message FROM room_{room_id} ORDER BY timestamp ASC")
-    messages = [row[0] for row in c.fetchall()]
-    conn.close()
+    try: #Added try block.
+        c.execute(f"SELECT message FROM room_{room_id} ORDER BY timestamp ASC")
+        messages = [row[0] for row in c.fetchall()]
+    except sqlite3.OperationalError: #If table does not exists.
+        messages = []#return empty array.
+    finally:
+        conn.close() #Ensure conn close.
     return messages
 
 
 def display_chat(room_id):
     """Displays the chat interface."""
+
     # Load chat history from the database
     chat_history = load_chat_history(room_id)
     for message in chat_history:
@@ -87,7 +93,7 @@ def main():
         if create_room:
             st.session_state['room_id'] = str(time.time())  # Generate unique room ID
             st.success(f"Room created! Share this URL with others. Room ID: {st.session_state['room_id']}")
-            create_table(st.session_state['room_id']) #Create table for room.
+            create_table(st.session_state['room_id'])  # Create table for room.
             st.experimental_rerun()  # Re-run once the room id has been created.
 
         if join_room:
@@ -129,9 +135,10 @@ def main():
             formatted_message = f"**{st.session_state['username']}:** {message}"  # Message format
             # Save the message to the database
             save_message(st.session_state['room_id'], formatted_message)
-            st.session_state["rerun_flag"] = not st.session_state.get("rerun_flag",False) #re-run
+            st.session_state["rerun_flag"] = not st.session_state.get("rerun_flag",False)  # re-run
 
-    st.session_state["rerun_flag"] = not st.session_state.get("rerun_flag", False) #Constant Re-run to ensure latest messages.
+    st.session_state["rerun_flag"] = not st.session_state.get("rerun_flag", False)  # Constant Re-run to ensure latest messages.
+
 
 if __name__ == "__main__":
     main()
