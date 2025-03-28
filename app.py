@@ -108,13 +108,15 @@ def main():
             st.session_state['room_id'] = safe_room_id  # Generate unique room ID
             st.success(f"Room created! Share this URL with others. Room ID: {st.session_state['room_id']}")
             create_table(st.session_state['room_id'])  # Create table for room.
-            st.experimental_rerun()  # Re-run once the room id has been created.
+            #st.experimental_rerun()  # Re-run once the room id has been created.
+            st.session_state["rerun_flag_create_room"] = not st.session_state.get("rerun_flag_create_room", False)
 
         if join_room:
             safe_join_room = re.sub(r'[^a-zA-Z0-9_]', '',join_room)
             st.session_state['room_id'] = safe_join_room  # Set room ID from user input
             create_table(st.session_state['room_id'])
-            st.experimental_rerun()
+            #st.experimental_rerun()
+            st.session_state["rerun_flag_join_room"] = not st.session_state.get("rerun_flag_join_room", False)
 
         return  # Stop execution until room ID is set
 
@@ -123,7 +125,8 @@ def main():
         username = st.text_input("Enter your username:")
         if username:
             st.session_state['username'] = username  # Set Username
-            st.experimental_rerun()
+            #st.experimental_rerun()
+            st.session_state["rerun_flag_username"] = not st.session_state.get("rerun_flag_username", False)
         else:
             st.warning("Please enter a username.")
             return
@@ -150,9 +153,11 @@ def main():
             formatted_message = f"**{st.session_state['username']}:** {message}"  # Message format
             # Save the message to the database
             save_message(st.session_state['room_id'], formatted_message)
-            st.session_state["rerun_flag"] = not st.session_state.get("rerun_flag",False)  # re-run
+            #st.experimental_rerun()  # re-run
+            st.session_state["rerun_flag_message"] = not st.session_state.get("rerun_flag_message", False)
 
-    st.session_state["rerun_flag"] = not st.session_state.get("rerun_flag", False)  # Constant Re-run to ensure latest messages.
+    #st.experimental_rerun()
+    st.session_state["rerun_flag_display"] = not st.session_state.get("rerun_flag_display", False)
 
 
 if __name__ == "__main__":
